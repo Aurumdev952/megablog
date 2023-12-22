@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-    provider = "prisma-client-js"
+    provider        = "prisma-client-js"
     previewFeatures = ["fullTextSearch", "fullTextIndex"]
 }
 
@@ -15,18 +15,6 @@ datasource db {
     url      = env("DATABASE_URL")
 }
 
-model Post {
-    id        Int      @id @default(autoincrement())
-    name      String
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-
-    createdBy   User   @relation(fields: [createdById], references: [id])
-    createdById String
-
-    @@index([name])
-}
-
 // Necessary for Next auth
 model Account {
     id                String  @id @default(cuid())
@@ -34,16 +22,18 @@ model Account {
     type              String
     provider          String
     providerAccountId String
-    refresh_token     String? // @db.Text
-    access_token      String? // @db.Text
+    refresh_token     String? @db.Text
+    access_token      String? @db.Text
     expires_at        Int?
     token_type        String?
     scope             String?
-    id_token          String? // @db.Text
+    id_token          String? @db.Text
     session_state     String?
     user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    refresh_token_expires_in Int?
 
     @@unique([provider, providerAccountId])
+    @@index([id])
 }
 
 model Session {
@@ -52,19 +42,37 @@ model Session {
     userId       String
     expires      DateTime
     user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([id])
 }
 
 model User {
-    id            String    @id @default(cuid())
+    id            String      @id @default(cuid())
     name          String?
-    email         String?   @unique
+    email         String?     @unique
     emailVerified DateTime?
     image         String?
+    bio           String?
     accounts      Account[]
     sessions      Session[]
-    posts         Post[]
+    blogs         Blog[]
+    comments      Comment[]   @relation(name: "comment")
+    liked         Comment[]   @relation(name: "like")
+    reactions     Reaction[]
+    subscribers   Subscribe[] @relation(name: "follower")
+    subscribes    Subscribe[] @relation(name: "follow")
+    saved         Blog[]      @relation(name: "save")
 
+    @@index([id])
     @@fulltext([name])
+}
+
+model Subscribe {
+    id          String @id @default(cuid())
+    follower    User   @relation(name: "follower", fields: [follower_id], references: [id])
+    follow      User   @relation(name: "follow", fields: [follow_id], references: [id])
+    follower_id String
+    follow_id   String
 }
 
 model VerificationToken {
@@ -72,6 +80,58 @@ model VerificationToken {
     token      String   @unique
     expires    DateTime
 
-    @@unique([identifier, token])
     @@id([identifier, token])
+    @@unique([identifier, token])
+}
+
+model Blog {
+    id           String     @id @default(cuid())
+    cover_image  Image      @relation(fields: [image_id], references: [id])
+    title        String
+    content      String     @db.Text
+    tags         String
+    author_id    String
+    author       User       @relation(fields: [author_id], references: [id], onDelete: Cascade)
+    is_published Boolean    @default(false)
+    publishedAt  DateTime?
+    createdAt    DateTime   @default(now())
+    updatedAt    DateTime   @updatedAt
+    image_id     String
+    reactions    Reaction[]
+    savers       User[]     @relation(name: "save")
+
+    @@index([id])
+    @@fulltext([title])
+}
+
+model Comment {
+    id        String @id @default(cuid())
+    content   String @db.Text
+    author_id String
+    author    User   @relation(name: "comment", fields: [author_id], references: [id], onDelete: Cascade)
+    post      String
+    likes     User[] @relation(name: "like")
+
+    @@index([id])
+}
+
+model Image {
+    id         String  @id @default(cuid())
+    secure_url String
+    name       String
+    alt        String?
+    Blog       Blog[]
+
+    @@index([id])
+}
+
+model Reaction {
+    id     String @id @default(cuid())
+    name   String
+    author User   @relation(fields: [userId], references: [id])
+    blog   Blog   @relation(fields: [blogId], references: [id])
+    userId String
+    blogId String
+
+    @@index([id])
 }
