@@ -109,7 +109,6 @@ model Comment {
     content   String @db.Text
     author_id String
     author    User   @relation(name: "comment", fields: [author_id], references: [id], onDelete: Cascade)
-    post      String
     likes     User[] @relation(name: "like")
 
     @@index([id])
@@ -120,7 +119,7 @@ model Image {
     secure_url String
     name       String
     alt        String?
-    Blog       Blog[]
+    blogs       Blog[]
 
     @@index([id])
 }
